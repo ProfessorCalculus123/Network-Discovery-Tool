@@ -1,6 +1,6 @@
 # NetGuard SMB
 
-NetGuard SMB is an automated local network discovery and unkwown/suspeciosu device scanning tool
+NetGuard SMB is an automated local network discovery and unkwown/suspicious device scanning tool. I hope you like the generic place holder name 'Net Guard'
 
 ---
 
