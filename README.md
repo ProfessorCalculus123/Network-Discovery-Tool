@@ -1,6 +1,6 @@
 # NetGuard SMB
 
-NetGuard SMB is an automated local network discovery, asset inventory, and security evaluation platform. It combines raw-packet ARP sweeps, TCP service interrogation, and rule-based risk evaluation with a FastAPI backend, SQLite persistence, and a real-time web dashboard. Also, the name is Netguard because I wanted it to feel more real to the user, so I went with a generic placeholder
+NetGuard SMB is an automated local network discovery,  unknown device alerting tool, asset inventory, and security evaluation platform. It combines raw-packet ARP sweeps, TCP service interrogation, and rule-based risk evaluation with a FastAPI backend, SQLite persistence, and a real-time web dashboard. Also, the name is Netguard because I wanted it to feel more real to the user, so I went with a generic placeholder
 
 ---
 
