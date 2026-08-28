@@ -1,6 +1,6 @@
 # NetGuard Enterprise & SMB Network Security Monitor
 
-**NetGuard** is an end-to-end network asset discovery, security auditing, and live device monitoring platform. It combines an active network discovery & vulnerability rules engine (built on Scapy and multi-threaded socket probes) with a hardened FastAPI backend, SQLite/SQLAlchemy persistent storage, and an interactive real-time dashboard. Now, to answer your question, the reaosn behind the name Netguard is because I wanted to create a dashboard that felt real and not another no-name project; hence why I went with the generic Netguard.
+**NetGuard** is an end-to-end network asset discovery, security auditing, and live device monitoring platform. It combines an active network discovery & vulnerability rules engine (built on Scapy and multi-threaded socket probes) with a hardened FastAPI backend, SQLite/SQLAlchemy persistent storage, and an interactive real-time dashboard. Now, to answer your question, the reason behind the name Netguard is that I wanted to create a dashboard that felt real and not another no-name project; hence why I went with the generic Netguard.
 
 ---
 
