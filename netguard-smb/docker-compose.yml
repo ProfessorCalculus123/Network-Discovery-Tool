@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./netguard.db
+      - API_KEYS_MAP=clinic_01:sk_live_12345
+    volumes:
+      - .:/app # Enables hot-reloading so you can code live
+    # If you want to use Postgres later, you'd add the db service here
+
+
