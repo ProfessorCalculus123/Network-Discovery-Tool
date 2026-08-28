@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiFi Health | Alpha Dental Clinic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            500: '#059669',
+                            600: '#047857'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            color: #0f172a;
+        }
+    </style>
+</head>
+
+<body class="flex h-screen overflow-hidden antialiased">
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <header class="h-20 bg-gradient-to-r from-slate-950 to-slate-900 border-b border-slate-800 px-10 py-4 flex justify-between items-center shrink-0 shadow-lg z-10">
+            <div class="flex items-center">
+                <div class="p-2 bg-slate-800 rounded-lg border border-slate-700 mr-4 shadow-inner">
+                    <i data-lucide="shield-check" class="w-6 h-6 text-emerald-500"></i>
+                </div>
+                <h2 id="header-title" class="text-xl font-bold tracking-tight text-white">WiFi Health Monitor</h2>
+            </div>
+            <div class="flex items-center space-x-3 bg-slate-800/50 px-4 py-2 rounded-full border border-slate-700/50">
+                <span class="flex h-3 w-3 relative">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
+                <span class="text-sm font-semibold text-slate-200 tracking-wide">Updating Live</span>
+            </div>
+        </header>
+        <div class="flex-1 overflow-y-auto p-8 md:p-12">
+            <section id="page-dashboard" class="block max-w-7xl mx-auto space-y-8 text-left">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200 p-6 flex items-center">
+                        <div class="p-4 bg-blue-50 text-blue-700 rounded-xl mr-5 ring-1 ring-inset ring-blue-100"><i data-lucide="server" class="w-8 h-8"></i></div>
+                        <div>
+                            <p class="text-sm font-bold text-slate-500 uppercase tracking-widest">Active Entities</p>
+                            <p class="text-4xl font-black text-slate-900 mt-1" id="dash-entities">0</p>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-200 p-6 flex items-center">
+                        <div class="p-4 bg-amber-50 text-amber-700 rounded-xl mr-5 ring-1 ring-inset ring-amber-100"><i data-lucide="alert-triangle" class="w-8 h-8"></i></div>
+                        <div>
+                            <p class="text-sm font-bold text-slate-500 uppercase tracking-widest">Security Alerts</p>
+                            <p class="text-4xl font-black text-slate-900 mt-1" id="dash-alerts">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white shadow-sm hover:shadow-md transition-shadow duration-300 rounded-2xl border border-slate-200 overflow-hidden">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                <th class="px-8 py-5 text-left text-xs text-slate-700 uppercase tracking-widest font-black">Entity</th>
+                                <th class="px-8 py-5 text-left text-xs text-slate-700 uppercase tracking-widest font-black">Activity Status</th>
+                                <th class="px-8 py-5 text-right text-xs text-slate-700 uppercase tracking-widest font-black">
+                                    <div class="flex items-center justify-end gap-5"><span class="px-4">State</span>
+                                        <div class="w-[146px]"></div>
+                                    </div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-dashboard" class="divide-y divide-slate-100 text-base bg-white"></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+    <script>
+        let API_KEY = localStorage.getItem('NETGUARD_API_KEY');
+        if (!API_KEY) {
+            API_KEY = prompt("Enter Administrator API Key:");
+            if (API_KEY) localStorage.setItem('NETGUARD_API_KEY', API_KEY);
+        }
+        const CLIENT_ID = "clinic_01";
+        let devices = [];
+
+        lucide.createIcons();
+
+        function computeStatus(device) {
+            const now = Math.floor(Date.now() / 1000);
+            const drift = Math.max(0, now - (device.last_seen || now));
+            const missedCycles = device.missed_cycles || 0;
+
+            if (device.bucket === 'archived') return "offline";
+
+            if (drift <= 90) return "active";
+            if (missedCycles <= 2 || drift <= 600) return "idle";
+            return "offline";
+        }
+
+        async function refresh() {
+            if (!API_KEY) return;
+            try {
+                const res = await fetch(`/api/v1/devices?client_id=${CLIENT_ID}`, {
+                    headers: {
+                        'x-api-key': API_KEY
+                    }
+                });
+                if (res.status === 401) {
+                    localStorage.removeItem('NETGUARD_API_KEY');
+                    API_KEY = prompt("Auth Failed. Enter Valid API Key:");
+                    if (API_KEY) {
+                        localStorage.setItem('NETGUARD_API_KEY', API_KEY);
+                        refresh();
+                    }
+                    return;
+                }
+                if (!res.ok) throw new Error("API returned " + res.status);
+
+                const data = await res.json();
+                devices = Array.isArray(data) ? data : (data.devices || []);
+                renderDash();
+                lucide.createIcons();
+            } catch (err) {
+                console.error("API Error:", err);
+                document.getElementById('tbody-dashboard').innerHTML =
+                    '<tr><td colspan="3" class="p-16 text-center font-bold text-red-500 bg-red-50/50">Backend offline or database error.</td></tr>';
+            }
+        }
+
+        async function authorize(mac) {
+            try {
+                const res = await fetch(`/api/v1/devices/${mac}/approve?client_id=${CLIENT_ID}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'x-api-key': API_KEY
+                    }
+                });
+                if (res.ok) await refresh();
+            } catch (err) {
+                console.error("Auth failed:", err);
+            }
+        }
+
+        function renderDash() {
+            const alertsCount = devices.filter(d => !d.is_known && d.bucket !== 'archived').length;
+            document.getElementById('dash-entities').innerText = devices.length;
+            document.getElementById('dash-alerts').innerText = alertsCount;
+
+            const sortedDevices = [...devices].sort((a, b) => {
+                const getRank = (device) => {
+                    if (device.hostname === 'This PC' || device.hostname === 'This Device') return 1;
+                    if (device.hostname === 'Network Gateway') return 2;
+                    if (device.is_known) return 3;
+                    if (device.bucket === 'archived') return 5;
+                    return 4;
+                };
+                const rankA = getRank(a),
+                    rankB = getRank(b);
+                if (rankA !== rankB) return rankA - rankB;
+                return (a.hostname || '').localeCompare(b.hostname || '');
+            });
+
+            document.getElementById('tbody-dashboard').innerHTML = sortedDevices.length ?
+                sortedDevices.map((d) => {
+                        const isUnknown = !d.is_known && d.bucket !== 'archived';
+                        const securityState = d.is_known ? 'Known' : (d.bucket === 'archived' ? 'Archived' : 'Unknown');
+
+                        // Cleanly handle styling for Known, Unknown, and Archived
+                        let stateClasses = 'bg-emerald-100 text-emerald-900 ring-1 ring-inset ring-emerald-600/20';
+                        let icon = 'check';
+                        let iconColor = 'text-emerald-600';
+
+                        if (d.bucket === 'archived') {
+                            stateClasses = 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-600/20';
+                            icon = 'archive';
+                            iconColor = 'text-slate-400';
+                        } else if (!d.is_known) {
+                            stateClasses = 'bg-red-100 text-red-900 ring-1 ring-inset ring-red-600/20';
+                            icon = 'alert-circle';
+                            iconColor = 'text-red-600';
+                        }
+
+                        const activityStatus = computeStatus(d);
+
+                        const now = Math.floor(Date.now() / 1000);
+                        const driftSeconds = Math.max(0, now - (d.last_seen || now));
+                        const diffMinutes = Math.floor(driftSeconds / 60);
+                        const timeText = driftSeconds < 60 ? 'Just now' : (diffMinutes > 120 ? Math.floor(diffMinutes / 60) + ' hrs ago' : diffMinutes + ' mins ago');
+
+                        let activityLabel = 'Active';
+                        let dotColor = 'bg-emerald-500';
+                        let pingHtml = '<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>';
+                        let subtextHtml = `<p class="text-xs font-semibold italic text-slate-500 mt-1">Last seen: ${timeText}</p>`;
+
+                        if (activityStatus === 'offline') {
+                            activityLabel = 'Offline';
+                            dotColor = 'bg-slate-400';
+                            pingHtml = '';
+                        } else if (activityStatus === 'idle') {
+                            activityLabel = 'Idle';
+                            dotColor = 'bg-amber-400';
+                            pingHtml = '';
+                        }
+
+                        if (d.hostname === 'This PC' || d.hostname === 'This Device' || d.hostname === 'Network Gateway') {
+                            activityLabel = 'Infrastructure Node';
+                            dotColor = 'bg-blue-500';
+                            pingHtml = '';
+                            subtextHtml = '';
+                        }
+
+                        return `<tr class="${isUnknown ? 'bg-red-50/30' : 'hover:bg-slate-50/80'} transition-colors duration-200 group">
+                        <td class="px-8 py-6">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center mr-4 ring-1 ring-slate-200"><i data-lucide="${icon}" class="w-5 h-5 ${iconColor}"></i></div>
+                                <div>
+                                    <p class="font-bold text-lg text-slate-900 tracking-tight">${d.hostname || d.name || 'Network Entity'}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-8 py-6">
+                            <div class="flex items-center space-x-3">
+                                <span class="relative flex h-3 w-3">${pingHtml}<span class="relative inline-flex rounded-full h-3 w-3 ${dotColor}"></span></span>
+                                <div><p class="text-sm font-bold text-slate-700">${activityLabel}</p>${subtextHtml}</div>
+                            </div>
+                        </td>
+                        <td class="px-8 py-6 text-right">
+                            <div class="flex items-center justify-end gap-5">
+                                <span class="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${stateClasses}">${securityState.toUpperCase()}</span>
+                                ${(!d.is_known && d.bucket !== 'archived') ? `<button onclick="authorize('${d.mac}')" class="opacity-0 group-hover:opacity-100 bg-brand-600 hover:bg-brand-500 focus:opacity-100 text-white text-xs px-5 py-2.5 rounded-lg font-bold tracking-widest transition-all shadow-md hover:shadow-lg outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 active:scale-95">ACKNOWLEDGE</button>` : '<div class="w-[146px]"></div>'}
+                            </div>
+                        </td>
+                    </tr>`;
+                }).join('') : '<tr><td colspan="3" class="p-16 text-center font-medium text-lg text-slate-500 italic">No network devices detected. Ensure scanner.py is running.</td></tr>';
+        }
+
+        setInterval(refresh, 5000);
+        refresh();
+    </script>
+</body>
+
+</html>
